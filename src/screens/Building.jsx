@@ -62,9 +62,6 @@ function Building() {
           <button className="bg-gray-700 hover:bg-gray-600 p-2 rounded-lg">
             <Database size={18} />
           </button>
-          <button className="bg-gray-700 hover:bg-gray-600 p-2 rounded-lg">
-            <SiVercel size={18} />
-          </button>
         </div>
 
         {/* Middle project name */}
