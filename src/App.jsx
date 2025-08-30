@@ -10,10 +10,10 @@ function App() {
     <Router>
       <Routes>
          <Route path="/" element={<Landing />} /> 
-        
+      
         <Route path="/build" element={<Building />} />
         <Route path="/templ" element={<Template />} />
-      
+    
        
       </Routes>
     </Router>
