@@ -4,12 +4,12 @@ export default function Template() {
   const [selected, setSelected] = useState(null);
 
   const templates = [
-    { id: 1, title: "Minimal Portfolio", category: "Portfolio", image: "https://source.unsplash.com/600x400/?minimal,portfolio&sig=1" },
-    { id: 2, title: "Startup Landing", category: "Landing Page", image: "https://source.unsplash.com/600x400/?startup,website&sig=2" },
-    { id: 3, title: "Modern Blog", category: "Blog", image: "https://source.unsplash.com/600x400/?blog,ui&sig=3" },
-    { id: 4, title: "E-commerce Store", category: "E-commerce", image: "https://source.unsplash.com/600x400/?ecommerce,shop&sig=4" },
-    { id: 5, title: "Creative Agency", category: "Agency", image: "https://source.unsplash.com/600x400/?agency,design&sig=5" },
-    { id: 6, title: "Dashboard UI", category: "Dashboard", image: "https://source.unsplash.com/600x400/?dashboard,analytics&sig=6" },
+    { id: 1, title: "Minimal Portfolio", category: "Portfolio", image: "src/assets/images/image.png" },
+    { id: 2, title: "Startup Landing", category: "Landing Page", image: "src/assets/images/image copy.png" }, 
+    { id: 3, title: "Modern Blog", category: "Blog", image: "src/assets/images/image copy 2.png" },
+    { id: 4, title: "E-commerce Store", category: "E-commerce", image: "src/assets/images/image copy 3.png" },
+    { id: 5, title: "Creative Agency", category: "Agency", image: "src/assets/images/image copy 4.png" },
+    { id: 6, title: "Dashboard UI", category: "Dashboard", image: "src/assets/images/image copy 5.png" },
   ];
 
   return (
