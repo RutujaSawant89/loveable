@@ -1,22 +1,18 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Landing from './screens/Landing'; // Adjust path as needed
-import Building from './screens/Building'; // Adjust path as needed
-import Template from './screens/Template'; // Adjust path as needed
-
+import React from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Landing from "./screens/Landing.jsx";
+import Building from "./screens/Building.jsx";
+import Template from "./screens/Template.jsx";
 
 function App() {
   return (
-    <Router>
+    <BrowserRouter>
       <Routes>
-         <Route path="/" element={<Landing />} /> 
-        
+        <Route path="/" element={<Landing />} />
         <Route path="/build" element={<Building />} />
         <Route path="/templ" element={<Template />} />
-      
-       
       </Routes>
-    </Router>
+    </BrowserRouter>
   );
 }
 
