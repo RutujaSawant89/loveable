@@ -1,43 +1,29 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from "react";
+import { Github, Database, FileEdit, MessageSquare } from "lucide-react";
+
 
 function Building() {
-  // State for the user's input prompt
-  const [prompt, setPrompt] = useState('');
-  // State to hold the generated HTML code
-  const [generatedCode, setGeneratedCode] = useState('');
-  // State for the ASCII backend diagram
-  const [asciiDiagram, setAsciiDiagram] = useState('');
-  // State to track loading status for UI feedback
+  const [prompt, setPrompt] = useState("");
+  const [generatedCode, setGeneratedCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  // Ref to store the complete generated code for visualization
-  const finalCodeRef = useRef('');
+  const [viewMode, setViewMode] = useState("preview"); // 'preview' | 'code' | 'split'
+  const [projectName, setProjectName] = useState("Untitled Project");
+  const [chatHistory, setChatHistory] = useState([]);
 
-  // --- API 1: Code Generation (Streaming) ---
   const handleGenerateClick = async () => {
-    if (!prompt) {
-      alert('Please enter a prompt.');
-      return;
-    }
-    // Reset states for a new generation
-    setGeneratedCode('');
-    setAsciiDiagram('');
-    finalCodeRef.current = '';
+    if (!prompt) return;
+    setGeneratedCode("");
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt }),
       });
 
-      if (!response.ok) {
-        throw new Error(`API request failed with status ${response.status}`);
-      }
-
-      if (!response.body) {
-        throw new Error("Response body is empty.");
-      }
+      if (!response.ok) throw new Error(`API failed: ${response.status}`);
+      if (!response.body) throw new Error("Empty response body");
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -47,157 +33,145 @@ function Building() {
         const { value, done: doneReading } = await reader.read();
         done = doneReading;
         const chunkValue = decoder.decode(value);
-        // Append each new chunk to the state to create the "typing" effect
         setGeneratedCode((prev) => prev + chunkValue);
-        finalCodeRef.current += chunkValue;
       }
-    } catch (error) {
-      console.error("Streaming failed:", error);
-      alert("Failed to generate code. Check the console for details.");
+
+      // Save prompt + small summary in chat history
+      setChatHistory((prev) => [
+        ...prev,
+        { role: "user", content: prompt },
+        { role: "ai", content: `Generated code for: ${prompt}` },
+      ]);
+    } catch (err) {
+      console.error("Generation failed", err);
     } finally {
       setIsLoading(false);
-      // Once generation is complete, generate the visualization
-      if (finalCodeRef.current) {
-        generateVisualization(finalCodeRef.current);
-      }
-    }
-  };
-
-  // --- API 2: Visualization Generation ---
-  const generateVisualization = async (htmlCode) => {
-    try {
-      const response = await fetch('/api/visualize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ htmlCode }),
-      });
-      const data = await response.json();
-      if (data.diagram) {
-        setAsciiDiagram(data.diagram);
-      }
-    } catch (error) {
-      console.error("Error generating visualization:", error);
-    }
-  };
-
-  // --- API 3: Code Editing ---
-  const handleEditSubmit = async (e) => {
-    e.preventDefault();
-    const editPrompt = e.target.elements.editPrompt.value;
-    if (!editPrompt) {
-        alert('Please enter an edit instruction.');
-        return;
-    }
-    setIsLoading(true);
-    try {
-        const response = await fetch('/api/edit', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                currentCode: generatedCode, // Send the current code for context
-                prompt: editPrompt,
-            }),
-        });
-        const data = await response.json();
-        if (data.newCode) {
-            // Replace the old code with the new, edited code
-            setGeneratedCode(data.newCode);
-        }
-    } catch (error) {
-        console.error("Failed to edit code:", error);
-        alert("Failed to edit code. Check the console for details.");
-    } finally {
-        setIsLoading(false);
-        e.target.elements.editPrompt.value = ''; // Clear the input field after submission
+      setPrompt("");
     }
   };
 
   return (
-    <div className="flex h-screen bg-black text-gray-200 font-sans">
-      {/* Left Panel: Controls */}
-      <div className="w-96 p-6 flex flex-col border-r border-slate-800 space-y-6">
-        <h1 className="text-2xl font-bold text-white">
-          AI<span className="text-purple-500">WebForge</span>
-        </h1>
-        
-        {/* AI System Logs */}
-        <div className="bg-slate-900/50 border border-slate-800 rounded-lg p-4 flex-shrink-0">
-          <h2 className="text-lg font-semibold mb-3 text-white">AI System Logs</h2>
-          <pre className="bg-black/50 p-3 rounded-md text-xs whitespace-pre-wrap h-48 overflow-auto text-gray-400 font-mono">
-            {asciiDiagram || "Logs will appear here..."}
-          </pre>
-        </div>
-        
-        {/* Chat / Edit */}
-        <div className="bg-slate-900/50 border border-slate-800 rounded-lg p-4 flex-grow flex flex-col">
-          <h2 className="text-lg font-semibold mb-3 text-white">Chat / Edit</h2>
-          <form onSubmit={handleEditSubmit} className="flex-grow flex flex-col">
-            <textarea
-              name="editPrompt"
-              className="w-full flex-grow p-3 bg-slate-900 rounded-md text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
-              placeholder="Type your edits here. e.g., 'Change the heading to...' and press submit."
-              disabled={!generatedCode || isLoading}
-            />
-            <button
-              type="submit"
-              className="mt-4 w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 px-4 rounded-lg disabled:bg-slate-700 disabled:cursor-not-allowed transition-colors"
-              disabled={!generatedCode || isLoading}
-            >
-              {isLoading ? 'Processing...' : 'Submit Edit'}
-            </button>
-          </form>
-        </div>
-      </div>
-
-      {/* Right Panel: Main Content */}
-      <div className="flex-grow p-6 flex flex-col">
-        {/* Prompt Bar */}
-        <div className="flex mb-4">
-          <input
-            type="text"
-            className="flex-grow p-3 bg-slate-900 rounded-l-lg text-base text-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500"
-            placeholder="e.g., 'Create a landing page for a coffee shop'"
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            disabled={isLoading}
-          />
-          <button
-            onClick={handleGenerateClick}
-            className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-r-lg disabled:bg-slate-700 disabled:cursor-not-allowed transition-colors"
-            disabled={isLoading}
-          >
-            {isLoading ? 'Generating...' : 'Generate'}
+    <div className="flex flex-col h-screen bg-gray-900 text-gray-200 font-sans overflow-hidden">
+      {/* Top Bar */}
+      <div className="flex items-center justify-between p-4 bg-gray-800 border-b border-gray-700 shadow-md">
+        {/* Left integrations */}
+        <div className="flex space-x-3">
+          <button className="bg-gray-700 hover:bg-gray-600 p-2 rounded-lg">
+            <Github size={18} />
+          </button>
+          <button className="bg-gray-700 hover:bg-gray-600 p-2 rounded-lg">
+            <Database size={18} />
+          </button>
+          <button className="bg-gray-700 hover:bg-gray-600 p-2 rounded-lg">
+            <SiVercel size={18} />
           </button>
         </div>
 
-        {/* Code and Preview */}
-        <div className="flex-grow grid grid-cols-2 gap-6">
-          {/* Code Editor */}
-          <div className="bg-slate-900/50 border border-slate-800 rounded-lg flex flex-col overflow-hidden">
-            <div className="p-3 border-b border-slate-800">
-              <h2 className="font-semibold text-white">Code</h2>
-            </div>
-            <div className="flex-grow overflow-auto">
-              <pre className="p-4 text-sm font-mono">
-                <code>{generatedCode}</code>
-              </pre>
-            </div>
+        {/* Middle project name */}
+        <div className="flex items-center space-x-2">
+          <FileEdit size={18} className="text-gray-400" />
+          <input
+            type="text"
+            value={projectName}
+            onChange={(e) => setProjectName(e.target.value)}
+            className="bg-transparent border-b border-gray-600 text-center text-white text-lg focus:outline-none focus:border-indigo-400"
+          />
+        </div>
+
+        {/* Right side placeholder */}
+        <div className="flex items-center space-x-2">
+          <button className="bg-gray-700 hover:bg-gray-600 p-2 rounded-lg">
+            <MessageSquare size={18} />
+          </button>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex flex-grow overflow-hidden">
+        {/* Chat Section on the Left */}
+        <div className="w-80 bg-gray-850 border-r border-gray-700 flex flex-col">
+          <div className="flex-grow overflow-auto p-4 space-y-3">
+            {chatHistory.map((msg, idx) => (
+              <div
+                key={idx}
+                className={`p-2 rounded-lg text-sm whitespace-pre-wrap ${
+                  msg.role === "user"
+                    ? "bg-indigo-600 text-white self-end"
+                    : "bg-gray-700 text-gray-200 self-start"
+                }`}
+              >
+                {msg.content}
+              </div>
+            ))}
           </div>
 
-          {/* Live Preview */}
-          <div className="bg-slate-900/50 border border-slate-800 rounded-lg flex flex-col">
-            <div className="p-3 border-b border-slate-800">
-              <h2 className="font-semibold text-white">Live Preview</h2>
-            </div>
-            <div className="flex-grow p-1">
-              <iframe
-                srcDoc={generatedCode}
-                title="preview"
-                sandbox="allow-scripts"
-                className="w-full h-full bg-white rounded-md border-none"
-              />
-            </div>
+          {/* Input Bar */}
+          <div className="p-3 border-t border-gray-700 flex space-x-2">
+            <input
+              type="text"
+              placeholder="Type your request..."
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleGenerateClick()}
+              disabled={isLoading}
+              className="flex-grow p-2 rounded bg-gray-800 text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <button
+              onClick={handleGenerateClick}
+              disabled={isLoading}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 rounded-lg disabled:bg-gray-600"
+            >
+              {isLoading ? "..." : "Send"}
+            </button>
           </div>
+        </div>
+
+        {/* Code + Preview Section on the Right - Full Width */}
+        <div className="flex-grow p-4 overflow-hidden flex flex-col">
+          {(viewMode === "code" || viewMode === "split") && (
+            <div className="bg-gray-800 border border-gray-700 rounded-lg flex flex-col overflow-hidden shadow-lg mb-4">
+              <div className="flex items-center justify-between p-2 border-b border-gray-700">
+                <h2 className="font-semibold text-white">Code</h2>
+                <button
+                  className="bg-gray-700 text-xs px-2 py-1 rounded hover:bg-gray-600"
+                  onClick={() =>
+                    setViewMode(viewMode === "code" ? "preview" : "code")
+                  }
+                >
+                  Toggle View
+                </button>
+              </div>
+              <div className="flex-grow overflow-auto">
+                <pre className="p-4 text-sm font-mono text-gray-300">
+                  <code>{generatedCode}</code>
+                </pre>
+              </div>
+            </div>
+          )}
+
+          {(viewMode === "preview" || viewMode === "split") && (
+            <div className="flex-grow bg-gray-800 border border-gray-700 rounded-lg flex flex-col overflow-hidden shadow-lg">
+              <div className="flex items-center justify-between p-2 border-b border-gray-700">
+                <h2 className="font-semibold text-white">Live Preview</h2>
+                <button
+                  className="bg-gray-700 text-xs px-2 py-1 rounded hover:bg-gray-600"
+                  onClick={() =>
+                    setViewMode(viewMode === "preview" ? "code" : "preview")
+                  }
+                >
+                  Toggle View
+                </button>
+              </div>
+              <div className="flex-grow overflow-auto p-1">
+                <iframe
+                  srcDoc={generatedCode}
+                  title="preview"
+                  sandbox="allow-scripts"
+                  className="w-full h-full bg-white rounded-md border-none"
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
