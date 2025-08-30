@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import Template from "./Template";
 import { motion } from "framer-motion";
 /* import { useRouter } from "next/router"; */
 
@@ -103,7 +104,9 @@ export default function Landing() {
             .animate-float { animation: float 6s ease-in-out infinite; }
           `}</style>
         </div>
+       
       </section>
+       <Template />
     </div>
   );
 }
