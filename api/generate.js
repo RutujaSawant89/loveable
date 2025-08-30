@@ -30,7 +30,7 @@ export default async function handler(req) {
       });
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
     // ==================================================================
     //  CONDITION: If 'currentCode' exists, we are in EDIT mode.

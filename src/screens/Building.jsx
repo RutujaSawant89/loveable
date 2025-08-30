@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Github, Database, FileEdit, MessageSquare, Code, Eye, Split } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Github, Database, FileEdit, MessageSquare, Code, Eye } from "lucide-react";
 
 function Building() {
   const [prompt, setPrompt] = useState("");
@@ -9,28 +9,34 @@ function Building() {
   const [projectName, setProjectName] = useState("Untitled Project");
   const [chatHistory, setChatHistory] = useState([]);
 
-  /**
-   * Handles sending the prompt to the backend.
-   * It dynamically decides whether to generate new code or edit existing code
-   * based on whether the `generatedCode` state is populated.
-   */
+  // --- FLICKER FIX: State to hold the final, complete code for the iframe ---
+  const [finalCodeForPreview, setFinalCodeForPreview] = useState("");
+  
+  // --- ANIMATION: Add a key to the iframe to trigger re-mounts for the animation ---
+  const [previewKey, setPreviewKey] = useState(0);
+
+  // When the final code is generated, update the preview.
+  useEffect(() => {
+    if (!isLoading && generatedCode) {
+      setFinalCodeForPreview(generatedCode);
+      // --- ANIMATION: Increment the key to trigger the fade-in animation on the new iframe ---
+      setPreviewKey(prevKey => prevKey + 1);
+    }
+  }, [isLoading, generatedCode]);
+
+
   const handleSendPrompt = async () => {
     if (!prompt.trim()) return;
 
     const currentChat = { role: "user", content: prompt };
     setChatHistory((prev) => [...prev, currentChat]);
     setIsLoading(true);
-    setPrompt(""); // Clear prompt immediately for better UX
+    setPrompt("");
 
     try {
-      // Determine if we are editing or generating for the first time
       const isEditing = generatedCode.length > 0;
       const endpoint = "/api/generate";
-
-      // Construct the request body based on the mode
-      const body = isEditing
-        ? { prompt, currentCode: generatedCode }
-        : { prompt };
+      const body = isEditing ? { prompt, currentCode: generatedCode } : { prompt };
 
       const response = await fetch(endpoint, {
         method: "POST",
@@ -42,31 +48,37 @@ function Building() {
         throw new Error(`API failed with status ${response.status}`);
       }
 
-      // HANDLE EDIT RESPONSE (JSON)
-      // If we are editing, the server returns a single JSON object with the full new code.
       if (isEditing) {
         const data = await response.json();
-        setGeneratedCode(data.newCode);
+        setGeneratedCode(data.newCode); // Update directly
         setChatHistory((prev) => [
           ...prev,
           { role: "ai", content: `Applied edit: ${prompt}` },
         ]);
-      }
-      // HANDLE GENERATE RESPONSE (STREAM)
-      // If this is the first generation, the server streams the HTML.
-      else {
+      } else {
         if (!response.body) throw new Error("Empty response body");
-        setGeneratedCode(""); // Clear placeholder before streaming
+        
+        // --- FLICKER FIX: Clear previous code immediately for the code view ---
+        setGeneratedCode(""); 
+        // --- FLICKER FIX: Clear the iframe to show a loading state ---
+        setFinalCodeForPreview("<html><body style='display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#555;'>Loading preview...</body></html>");
+
+
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let done = false;
+        let fullCode = "";
 
         while (!done) {
           const { value, done: doneReading } = await reader.read();
           done = doneReading;
           const chunkValue = decoder.decode(value);
-          setGeneratedCode((prev) => prev + chunkValue);
+          fullCode += chunkValue;
+          
+          // --- FLICKER FIX: Update the live code view only, not the iframe ---
+          setGeneratedCode(fullCode);
         }
+        
         setChatHistory((prev) => [
           ...prev,
           { role: "ai", content: `Generated code for: ${prompt}` },
@@ -83,7 +95,6 @@ function Building() {
     }
   };
 
-  // A dedicated component for the view mode toggle buttons
   const ViewToggle = () => (
     <div className="flex items-center bg-gray-700 rounded-lg p-1">
       <button
@@ -105,7 +116,6 @@ function Building() {
 
   return (
     <div className="flex flex-col h-screen bg-gray-900 text-gray-200 font-sans overflow-hidden">
-      {/* Top Bar */}
       <header className="flex items-center justify-between p-3 bg-gray-800 border-b border-gray-700 shadow-md flex-shrink-0">
         <div className="flex items-center space-x-3">
           <button className="bg-gray-700 hover:bg-gray-600 p-2 rounded-lg transition-colors">
@@ -125,21 +135,19 @@ function Building() {
           />
         </div>
         <div className="flex items-center space-x-3">
-            <ViewToggle />
+          <ViewToggle />
           <button className="bg-gray-700 hover:bg-gray-600 p-2 rounded-lg transition-colors">
             <MessageSquare size={18} />
           </button>
         </div>
       </header>
 
-      {/* Main Content Area */}
       <main className="flex flex-grow overflow-hidden">
-        {/* Left: Chat Panel */}
         <aside className="w-80 bg-gray-850 border-r border-gray-700 flex flex-col flex-shrink-0">
           <div className="flex-grow overflow-y-auto p-4 space-y-4">
-            {chatHistory.length === 0 && (
+             {chatHistory.length === 0 && (
                 <div className="text-center text-gray-500 mt-8 px-4">
-                    <p>Start by describing the component or page you want to build.</p>
+                    <p>Describe the component you want to build.</p>
                 </div>
             )}
             {chatHistory.map((msg, idx) => (
@@ -154,7 +162,7 @@ function Building() {
                 {msg.content}
               </div>
             ))}
-             {isLoading && (
+             {isLoading && chatHistory[chatHistory.length - 1]?.role === 'user' && (
               <div className="bg-gray-700 p-3 rounded-lg text-sm text-gray-400 self-start animate-pulse">
                 Generating...
               </div>
@@ -185,7 +193,6 @@ function Building() {
           </div>
         </aside>
 
-        {/* Right: Code and Preview Panel */}
         <section className="flex-grow p-4 overflow-auto">
           {viewMode === "code" && (
             <div className="bg-gray-800 border border-gray-700 rounded-lg flex flex-col overflow-hidden shadow-lg h-full">
@@ -199,13 +206,25 @@ function Building() {
           )}
           {viewMode === "preview" && (
             <div className="bg-white border border-gray-700 rounded-lg flex flex-col overflow-hidden shadow-lg h-full">
-               <div className="p-2 border-b border-gray-300 text-sm font-semibold text-gray-800 bg-gray-100">Live Preview</div>
+              {/* --- ANIMATION: Add style tag for the fade-in keyframes --- */}
+              <style>{`
+                @keyframes fadeIn {
+                  from { opacity: 0; }
+                  to { opacity: 1; }
+                }
+                .fade-in-iframe {
+                  animation: fadeIn 0.5s ease-in-out;
+                }
+              `}</style>
+              <div className="p-2 border-b border-gray-300 text-sm font-semibold text-gray-800 bg-gray-100">Live Preview</div>
               <div className="flex-grow overflow-auto">
                 <iframe
-                  srcDoc={generatedCode}
+                  // --- ANIMATION: Add key and className to trigger animation ---
+                  key={previewKey}
+                  className="w-full h-full border-none fade-in-iframe"
+                  srcDoc={finalCodeForPreview}
                   title="preview"
                   sandbox="allow-scripts"
-                  className="w-full h-full border-none"
                 />
               </div>
             </div>
@@ -217,4 +236,5 @@ function Building() {
 }
 
 export default Building;
+
 
