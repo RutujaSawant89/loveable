@@ -1,13 +1,11 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Landing from './screens/Landing'; // Adjust path as needed
-import Building from './screens/Building'; // Adjust path as needed
-import Template from './screens/Template'; // Adjust path as needed
-
-
+import React from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Landing from "./screens/Landing";
+/* import Building from "./screens/Building";
+import Template from "./screens/Template"; */
 function App() {
   return (
-    <Router>
+    <BrowserRouter>
       <Routes>
          <Route path="/" element={<Landing />} /> 
       
@@ -16,7 +14,7 @@ function App() {
     
        
       </Routes>
-    </Router>
+    </BrowserRouter>
   );
 }
 
