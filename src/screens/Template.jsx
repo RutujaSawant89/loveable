@@ -4,12 +4,12 @@ export default function Template() {
   const [selected, setSelected] = useState(null);
 
   const templates = [
-    { id: 1, title: "Minimal Portfolio", category: "Portfolio", image: "src/assets/images/image.png" },
-    { id: 2, title: "Startup Landing", category: "Landing Page", image: "src/assets/images/image_copy.png" },
-    { id: 3, title: "Modern Blog", category: "Blog", image: "src/assets/images/image_copy_2.png" },
-    { id: 4, title: "E-commerce Store", category: "E-commerce", image: "src/assets/images/image_copy_3.png" },
-    { id: 5, title: "Creative Agency", category: "Agency", image: "src/assets/images/image_copy_4.png" },
-    { id: 6, title: "Dashboard UI", category: "Dashboard", image: "src/assets/images/image_copy_5.png" },
+    { id: 1, title: "Minimal Portfolio", category: "Portfolio", image: "/images/image.png" },
+    { id: 2, title: "Startup Landing", category: "Landing Page", image: "/images/image_copy.png" },
+    { id: 3, title: "Modern Blog", category: "Blog", image: "/images/image_copy_2.png" },
+    { id: 4, title: "E-commerce Store", category: "E-commerce", image: "/images/image_copy_3.png" },
+    { id: 5, title: "Creative Agency", category: "Agency", image: "/images/image_copy_4.png" },
+    { id: 6, title: "Dashboard UI", category: "Dashboard", image: "/images/image_copy_5.png" },
   ];
 
   return (
