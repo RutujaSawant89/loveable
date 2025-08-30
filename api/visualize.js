@@ -17,7 +17,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'HTML code is required' });
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     // A prompt specifically for creating ASCII diagrams from HTML
     const prompt = `

@@ -16,7 +16,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Current code and prompt are required' });
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     // This prompt is key. It tells the model to ONLY return the full, updated code.
     const systemPrompt = `

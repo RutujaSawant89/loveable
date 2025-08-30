@@ -37,7 +37,7 @@ export default async function handler(req) {
       - DO NOT include any explanations, comments, or markdown formatting like \`\`\`html. Only output the raw HTML code.
     `;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     const fullPrompt = `${systemPrompt}\n\nUser Prompt: "${prompt}"`;
 
     const result = await model.generateContentStream(fullPrompt);
