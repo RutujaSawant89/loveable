@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Github, Database, FileEdit, MessageSquare } from "lucide-react";
-import { SiVercel } from "react-icons/si";
+
 
 function Building() {
   const [prompt, setPrompt] = useState("");
