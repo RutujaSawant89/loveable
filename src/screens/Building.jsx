@@ -28,7 +28,7 @@ function Building() {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let done = false;
-
+// andugundu
       while (!done) {
         const { value, done: doneReading } = await reader.read();
         done = doneReading;

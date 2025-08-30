@@ -10,11 +10,11 @@ function App() {
          <Route path="/" element={<Landing />} /> 
       
         <Route path="/build" element={<Building />} />
-        <Route path="/templ" element={<Template />} />
-    
-       
+        <Route path="/temp" element={<Template />} />
+
       </Routes>
     </BrowserRouter>
+    
   );
 }
 
