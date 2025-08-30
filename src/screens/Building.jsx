@@ -5,7 +5,7 @@ function Building() {
   const [prompt, setPrompt] = useState("");
   const [generatedCode, setGeneratedCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [viewMode, setViewMode] = useState("preview");
+  const [viewMode, setViewMode] = useState("preview"); // 'preview' | 'code'
   const [projectName, setProjectName] = useState("Untitled Project");
   const [chatHistory, setChatHistory] = useState([]);
   
@@ -14,7 +14,8 @@ function Building() {
 
   // Effect to update the preview when an edit happens (non-streaming)
   useEffect(() => {
-    if (iframeRef.current && !isLoading && generatedCode && chatHistory[chatHistory.length-1]?.content.startsWith('Applied edit')) {
+    // FIX: Add a guard to ensure the iframe and its document are ready.
+    if (iframeRef.current && iframeRef.current.contentDocument && !isLoading && generatedCode && chatHistory[chatHistory.length-1]?.content.startsWith('Applied edit')) {
       const iframeDoc = iframeRef.current.contentDocument;
       if (iframeDoc) {
         iframeDoc.open();
@@ -61,72 +62,88 @@ function Building() {
         setGeneratedCode(""); 
 
         // --- SECTION-BY-SECTION ANIMATION LOGIC ---
-
-        // 1. Define Skeleton and Styles
-        const skeletonHTML = `
-          <html>
-            <head>
-              <script src="https://cdn.tailwindcss.com"></script>
-              <style>
-                @keyframes pulse { 50% { opacity: .5; } }
-                .skeleton { 
-                  animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; 
-                  background-color: #e5e7eb; /* gray-200 */
-                  border-radius: 0.5rem; 
-                }
-                @keyframes fadeIn { 
-                  from { opacity: 0; transform: translateY(10px); } 
-                  to { opacity: 1; transform: translateY(0); } 
-                }
-                body > * {
-                  animation: fadeIn 0.5s ease-out forwards;
-                }
-              </style>
-            </head>
-            <body class="p-4 sm:p-6 lg:p-8 bg-white">
-              <div class="skeleton w-full h-16 mb-6"></div>
-              <div class="skeleton w-full h-80 mb-6"></div>
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                <div class="skeleton h-56"></div>
-                <div class="skeleton h-56"></div>
-                <div class="skeleton h-56"></div>
-              </div>
-            </body>
-          </html>
-        `;
-
-        // 2. Setup Iframe with Skeleton
-        const iframe = iframeRef.current;
-        const iframeDoc = iframe.contentDocument;
-        iframeDoc.open();
-        iframeDoc.write(skeletonHTML);
-        iframeDoc.close();
-
-        // 3. Create off-screen parser and state
-        const parserDiv = document.createElement('div');
-        let hasClearedSkeleton = false;
         
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let done = false;
+        // FIX: Ensure the iframe is ready before trying to manipulate it.
+        const iframe = iframeRef.current;
+        const iframeDoc = iframe ? iframe.contentDocument : null;
 
-        while (!done) {
-          const { value, done: doneReading } = await reader.read();
-          done = doneReading;
-          const chunkValue = decoder.decode(value, { stream: true });
+        if (iframeDoc) {
+          // 1. Define Skeleton and Styles
+          const skeletonHTML = `
+            <html>
+              <head>
+                <script src="https://cdn.tailwindcss.com"></script>
+                <style>
+                  @keyframes pulse { 50% { opacity: .5; } }
+                  .skeleton { 
+                    animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; 
+                    background-color: #e5e7eb; /* gray-200 */
+                    border-radius: 0.5rem; 
+                  }
+                  @keyframes fadeIn { 
+                    from { opacity: 0; transform: translateY(10px); } 
+                    to { opacity: 1; transform: translateY(0); } 
+                  }
+                  body > * {
+                    animation: fadeIn 0.5s ease-out forwards;
+                  }
+                </style>
+              </head>
+              <body class="p-4 sm:p-6 lg:p-8 bg-white">
+                <div class="skeleton w-full h-16 mb-6"></div>
+                <div class="skeleton w-full h-80 mb-6"></div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                  <div class="skeleton h-56"></div>
+                  <div class="skeleton h-56"></div>
+                  <div class="skeleton h-56"></div>
+                </div>
+              </body>
+            </html>
+          `;
 
-          setGeneratedCode(prev => prev + chunkValue);
-          parserDiv.innerHTML += chunkValue;
+          // 2. Setup Iframe with Skeleton
+          iframeDoc.open();
+          iframeDoc.write(skeletonHTML);
+          iframeDoc.close();
 
-          // 4. Move any fully-formed child nodes from parser to the iframe's body
-          while (parserDiv.firstElementChild) {
-            if (!hasClearedSkeleton) {
-              iframeDoc.body.innerHTML = ''; // Clear skeleton
-              hasClearedSkeleton = true;
+          // 3. Create off-screen parser and state
+          const parserDiv = document.createElement('div');
+          let hasClearedSkeleton = false;
+          
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let done = false;
+
+          while (!done) {
+            const { value, done: doneReading } = await reader.read();
+            done = doneReading;
+            const chunkValue = decoder.decode(value, { stream: true });
+
+            setGeneratedCode(prev => prev + chunkValue);
+            parserDiv.innerHTML += chunkValue;
+
+            // 4. Move any fully-formed child nodes from parser to the iframe's body
+            while (parserDiv.firstElementChild) {
+              if (!hasClearedSkeleton) {
+                iframeDoc.body.innerHTML = ''; // Clear skeleton
+                hasClearedSkeleton = true;
+              }
+              // Move the parsed element to the iframe, which triggers the CSS animation
+              iframeDoc.body.appendChild(parserDiv.firstElementChild);
             }
-            // Move the parsed element to the iframe, which triggers the CSS animation
-            iframeDoc.body.appendChild(parserDiv.firstElementChild);
           }
+        } else {
+            // Fallback for when iframe is not visible: just stream the code without preview
+            console.warn("Preview not visible. Streaming code only.");
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let done = false;
+            while (!done) {
+                const { value, done: doneReading } = await reader.read();
+                done = doneReading;
+                const chunkValue = decoder.decode(value);
+                setGeneratedCode((prev) => prev + chunkValue);
+            }
         }
         
         setChatHistory((prev) => [
