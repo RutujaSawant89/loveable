@@ -1,28 +1,28 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Github, Database, FileEdit, MessageSquare, Code, Eye } from "lucide-react";
 
 function Building() {
   const [prompt, setPrompt] = useState("");
   const [generatedCode, setGeneratedCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [viewMode, setViewMode] = useState("preview"); // 'preview' | 'code'
+  const [viewMode, setViewMode] = useState("preview");
   const [projectName, setProjectName] = useState("Untitled Project");
   const [chatHistory, setChatHistory] = useState([]);
-
-  // --- FLICKER FIX: State to hold the final, complete code for the iframe ---
-  const [finalCodeForPreview, setFinalCodeForPreview] = useState("");
   
-  // --- ANIMATION: Add a key to the iframe to trigger re-mounts for the animation ---
-  const [previewKey, setPreviewKey] = useState(0);
+  // --- REAL-TIME PREVIEW: Ref to directly manipulate the iframe's DOM ---
+  const iframeRef = useRef(null);
 
-  // When the final code is generated, update the preview.
+  // Effect to update the preview when an edit happens (non-streaming)
   useEffect(() => {
-    if (!isLoading && generatedCode) {
-      setFinalCodeForPreview(generatedCode);
-      // --- ANIMATION: Increment the key to trigger the fade-in animation on the new iframe ---
-      setPreviewKey(prevKey => prevKey + 1);
+    if (iframeRef.current && !isLoading && generatedCode && chatHistory[chatHistory.length-1]?.content.startsWith('Applied edit')) {
+      const iframeDoc = iframeRef.current.contentDocument;
+      if (iframeDoc) {
+        iframeDoc.open();
+        iframeDoc.write(generatedCode);
+        iframeDoc.close();
+      }
     }
-  }, [isLoading, generatedCode]);
+  }, [generatedCode, isLoading, chatHistory]);
 
 
   const handleSendPrompt = async () => {
@@ -58,25 +58,75 @@ function Building() {
       } else {
         if (!response.body) throw new Error("Empty response body");
         
-        // --- FLICKER FIX: Clear previous code immediately for the code view ---
         setGeneratedCode(""); 
-        // --- FLICKER FIX: Clear the iframe to show a loading state ---
-        setFinalCodeForPreview("<html><body style='display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#555;'>Loading preview...</body></html>");
 
+        // --- SECTION-BY-SECTION ANIMATION LOGIC ---
 
+        // 1. Define Skeleton and Styles
+        const skeletonHTML = `
+          <html>
+            <head>
+              <script src="https://cdn.tailwindcss.com"></script>
+              <style>
+                @keyframes pulse { 50% { opacity: .5; } }
+                .skeleton { 
+                  animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; 
+                  background-color: #e5e7eb; /* gray-200 */
+                  border-radius: 0.5rem; 
+                }
+                @keyframes fadeIn { 
+                  from { opacity: 0; transform: translateY(10px); } 
+                  to { opacity: 1; transform: translateY(0); } 
+                }
+                body > * {
+                  animation: fadeIn 0.5s ease-out forwards;
+                }
+              </style>
+            </head>
+            <body class="p-4 sm:p-6 lg:p-8 bg-white">
+              <div class="skeleton w-full h-16 mb-6"></div>
+              <div class="skeleton w-full h-80 mb-6"></div>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                <div class="skeleton h-56"></div>
+                <div class="skeleton h-56"></div>
+                <div class="skeleton h-56"></div>
+              </div>
+            </body>
+          </html>
+        `;
+
+        // 2. Setup Iframe with Skeleton
+        const iframe = iframeRef.current;
+        const iframeDoc = iframe.contentDocument;
+        iframeDoc.open();
+        iframeDoc.write(skeletonHTML);
+        iframeDoc.close();
+
+        // 3. Create off-screen parser and state
+        const parserDiv = document.createElement('div');
+        let hasClearedSkeleton = false;
+        
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let done = false;
-        let fullCode = "";
 
         while (!done) {
           const { value, done: doneReading } = await reader.read();
           done = doneReading;
-          const chunkValue = decoder.decode(value);
-          fullCode += chunkValue;
-          
-          // --- FLICKER FIX: Update the live code view only, not the iframe ---
-          setGeneratedCode(fullCode);
+          const chunkValue = decoder.decode(value, { stream: true });
+
+          setGeneratedCode(prev => prev + chunkValue);
+          parserDiv.innerHTML += chunkValue;
+
+          // 4. Move any fully-formed child nodes from parser to the iframe's body
+          while (parserDiv.firstElementChild) {
+            if (!hasClearedSkeleton) {
+              iframeDoc.body.innerHTML = ''; // Clear skeleton
+              hasClearedSkeleton = true;
+            }
+            // Move the parsed element to the iframe, which triggers the CSS animation
+            iframeDoc.body.appendChild(parserDiv.firstElementChild);
+          }
         }
         
         setChatHistory((prev) => [
@@ -206,25 +256,13 @@ function Building() {
           )}
           {viewMode === "preview" && (
             <div className="bg-white border border-gray-700 rounded-lg flex flex-col overflow-hidden shadow-lg h-full">
-              {/* --- ANIMATION: Add style tag for the fade-in keyframes --- */}
-              <style>{`
-                @keyframes fadeIn {
-                  from { opacity: 0; }
-                  to { opacity: 1; }
-                }
-                .fade-in-iframe {
-                  animation: fadeIn 0.5s ease-in-out;
-                }
-              `}</style>
               <div className="p-2 border-b border-gray-300 text-sm font-semibold text-gray-800 bg-gray-100">Live Preview</div>
               <div className="flex-grow overflow-auto">
                 <iframe
-                  // --- ANIMATION: Add key and className to trigger animation ---
-                  key={previewKey}
-                  className="w-full h-full border-none fade-in-iframe"
-                  srcDoc={finalCodeForPreview}
+                  ref={iframeRef}
                   title="preview"
                   sandbox="allow-scripts"
+                  className="w-full h-full border-none"
                 />
               </div>
             </div>
@@ -236,5 +274,4 @@ function Building() {
 }
 
 export default Building;
-
 
