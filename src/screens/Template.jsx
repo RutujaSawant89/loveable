@@ -1,7 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 
 export default function Template() {
   const [selected, setSelected] = useState(null);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const particleCount = 60;
+  const particles = Array.from({ length: particleCount });
+
+  useEffect(() => {
+    const handleMouseMove = (e) => setMousePos({ x: e.clientX, y: e.clientY });
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, []);
 
   const templates = [
     { id: 1, title: "Minimal Portfolio", category: "Portfolio", image: "/images/image.png" },
@@ -13,10 +23,32 @@ export default function Template() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-gray-950 to-black text-white px-6 py-12 relative z-10">
+    <div className="min-h-screen bg-gradient-to-b from-black via-gray-950 to-black text-white px-6 py-12 relative overflow-hidden z-10">
       
+      {/* Moving Particles */}
+      {particles.map((_, idx) => {
+        const size = 4 + Math.random() * 10;
+        const speed = 2 + Math.random() * 3;
+        const offsetX = Math.random() * window.innerWidth;
+        const offsetY = Math.random() * window.innerHeight;
+
+        return (
+          <motion.div
+            key={idx}
+            className="absolute rounded-full bg-purple-500/60 shadow-[0_0_20px_rgba(255,0,255,0.5)]"
+            style={{ width: size, height: size }}
+            animate={{
+              x: mousePos.x + offsetX * Math.cos((performance.now() / 1000) / speed),
+              y: mousePos.y + offsetY * Math.sin((performance.now() / 1000) / speed),
+              opacity: [0.2, 0.8, 0.2],
+            }}
+            transition={{ repeat: Infinity, repeatType: "loop", duration: 3 + Math.random() * 3 }}
+          />
+        );
+      })}
+
       {/* Header */}
-      <div className="max-w-7xl mx-auto text-center mb-12">
+      <div className="max-w-7xl mx-auto text-center mb-12 relative z-10">
         <h1 className="text-4xl font-extrabold bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text text-transparent mb-4">
           Explore Templates
         </h1>
@@ -26,7 +58,7 @@ export default function Template() {
       </div>
 
       {/* Grid */}
-      <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 relative z-10">
         {templates.map((tpl) => (
           <div
             key={tpl.id}

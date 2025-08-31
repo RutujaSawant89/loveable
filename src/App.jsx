@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Landing from "./screens/Landing";
 import Building from "./screens/Building";
 import Template from "./screens/Template";
+
 function App() {
   return (
     <BrowserRouter>
@@ -11,6 +12,7 @@ function App() {
       
         <Route path="/build" element={<Building />} />
         <Route path="/temp" element={<Template />} />
+        
 
       </Routes>
     </BrowserRouter>
@@ -19,3 +21,6 @@ function App() {
 }
 
 export default App;
+
+
+
